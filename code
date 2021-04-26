@@ -1,0 +1,107 @@
+test1 <- read.csv(file.choose(),header=TRUE)
+train2 <- read.csv(file.choose(),header=TRUE)
+
+#exploring data
+
+install.packages("caTools") 
+library(caTools)
+install.packages("gridExtra")
+library(gridExtra)
+summary(test1)
+summary(train2)
+dim(test1)
+dim(train2)
+head(test1)
+head(train2)
+str(test1)
+str(train2)
+
+#cleaning data
+install.packages('tidyverse')
+library(tidyverse)
+
+train2$duration <- as.numeric(train2$duration)
+train2$age <- as.numeric(train2$age)
+train2$campaign <- as.numeric(train2$campaign)
+train2$pdays <- as.numeric(train2$pdays)
+
+install.packages("gdata")
+install.packages("magrittr") 
+install.packages("dplyr") 
+library(magrittr) 
+library(dplyr) 
+library(gdata)
+
+train2$marital <- as.factor(train2$marital)
+train2$marital[train2$marital == "unknown"] <- "NA"
+
+train2$housing[train2$housing == "unknown"] <- "NA"
+train2$loan <- as.factor(train2$loan)
+
+train2$loan <- as.factor(train2$loan)
+train2$loan[train2$loan == "unknown"] <- "NA"
+
+sapply(train2, function(x) sum(is.na(x)))
+clean.train <- na.omit(train2) 
+sapply(clean.train, function(x) sum(is.na(x)))
+
+clean.train$housing <- factor(clean.train$housing)
+clean.train$loan <- factor(clean.train$loan)
+clean.train$marital <- factor(clean.train$marital)
+
+summary(clean.train)
+
+test1$marital <- as.factor(test1$marital)
+test1$marital[test1$marital == "unknown"] <- "NA"
+
+test1$housing[test1$housing == "unknown"] <- "NA"
+test1$housing <- as.factor(test1$housing)
+
+test1$loan <- as.factor(test1$loan)
+test1$loan[test1$loan == "unknown"] <- "NA"
+
+summary(test1)
+
+sapply(test1, function(x) sum(is.na(x)))
+clean.test <- na.omit(test1) 
+sapply(clean.test, function(x) sum(is.na(x)))
+
+clean.test$housing <- factor(clean.test$housing)
+clean.test$loan <- factor(clean.test$loan)
+clean.test$marital <- factor(clean.test$marital)
+
+
+#data realizations
+hista <- clean.train %>% group_by(Subscribed) %>% summarize(grp.mean=mean(age))
+ggplot (clean.train, aes(x=age)) + 
+geom_histogram(color = "green", fill = "green", binwidth = 5) +
+facet_grid(cols=vars(Subscribed)) + 
+ggtitle('Age by Subscription') + ylab('Count') + xlab('Age') +
+scale_x_continuous(breaks = seq(0,100,5)) +
+geom_vline(data=hista, aes(xintercept=grp.mean), color="red", linetype="dashed")
+
+ggplot(data = clean.train, aes(x=education, fill=Subscribed)) +
+geom_bar() +
+ggtitle("Subscription based on Education") +
+xlab("Education") +
+guides(fill=guide_legend(title="Subscription"))
+
+
+#data modelling using c.50
+set.seed(1234)
+g <- runif(nrow(clean.train))
+clean.train2 <- clean.train[order(g),]
+install.packages("C50")
+library('C50')
+s1 <- C5.0(clean.train2[1:28507,-15], clean.train2[1:28507,15])
+table(clean.train)
+summary(s1)
+
+install.packages ("gmodels")
+install.packages("MASS")
+library(gmodels)
+library(MASS)
+z1 <- predict(s1,clean.test)
+z1
+CrossTable(clean.test$Subscribed, z1,prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
+dnn = c('actual default', 'predicted default'))
